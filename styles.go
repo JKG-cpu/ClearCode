@@ -15,3 +15,7 @@ var statusBarStyle = lipgloss.NewStyle().
 var selectedTextStyle = lipgloss.NewStyle().
 	Bold(true).
 	Italic(true)
+
+var cursorStyle = lipgloss.NewStyle().
+    Underline(true).
+    Foreground(lipgloss.Color("205"))

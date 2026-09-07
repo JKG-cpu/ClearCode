@@ -77,3 +77,26 @@ func GetContentHeight(m model) int {
 
 	return m.height - sidebarStyle.GetVerticalFrameSize() - statusHeight
 }
+
+func RenderWithCursor(content string, cursor [2]int) string {
+    lines := strings.Split(content, "\n")
+
+    if cursor[0] < 0 || cursor[0] >= len(lines) {
+        return content
+    }
+
+    line := lines[cursor[0]]
+    runes := []rune(line)
+
+    if cursor[1] < 0 || cursor[1] >= len(runes) {
+        return content
+    }
+
+    before := string(runes[:cursor[1]])
+    char := string(runes[cursor[1]])
+    after := string(runes[cursor[1]+1:])
+
+    lines[cursor[0]] = before + cursorStyle.Render(char) + after
+
+    return strings.Join(lines, "\n")
+}

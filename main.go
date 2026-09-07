@@ -19,7 +19,7 @@ const (
 type model struct {
 	width int
 	height int
-	cursor int
+	cursor [2]int
 	cursorScrollOffset int
 	fileCursor int
 	fileScrollOffset int

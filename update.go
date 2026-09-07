@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -18,18 +19,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Cursor Movement
 			if msg.String() == "j" || msg.String() == "down" {
-				if m.cursor >= len(m.filteredFiles)-1 {
-					m.cursor = 0
+				if m.cursor[0] >= len(m.filteredFiles)-1 {
+					m.cursor[0] = 0
 				} else {
-					m.cursor++
+					m.cursor[0]++
+				}
+
+				lines := strings.Split(m.currentFileContent, "\n")
+				contentHeight := GetContentHeight(m)
+				maxOffset := max(len(lines) - contentHeight, 0)
+
+				if m.cursorScrollOffset < maxOffset { 
+					m.cursorScrollOffset++
 				}
 			}
 
 			if msg.String() == "k" || msg.String() == "up" {
-				if m.cursor <= 0 {
-					m.cursor = len(m.filteredFiles) - 1
+				if m.cursor[0] <= 0 {
+					m.cursor[0] = len(m.filteredFiles) - 1
 				} else {
-					m.cursor--
+					m.cursor[0]--
+				}
+
+				if m.cursorScrollOffset > 0 {
+					m.cursorScrollOffset--
 				}
 			}
 
@@ -101,6 +114,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return ReadCurrentDir(m.currentPath)
 					}
 				} else {
+					m.cursorScrollOffset = 0
+					m.cursor = [2]int{0, 0}
+
 					newPath := filepath.Join(m.currentPath, file.Name())
 					bytes, err := ReadFile(newPath)
 
