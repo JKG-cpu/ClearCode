@@ -1,58 +1,76 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
-var sidebarStyle = lipgloss.NewStyle().
-	Width(24).
-	Border(lipgloss.NormalBorder())
+// Structs
+type Mode int
 
-var mainStyle = lipgloss.NewStyle().
-	Border(lipgloss.NormalBorder())
+const (
+	NormalMode Mode = iota
+	InsertMode
+	FileMode
+)
 
 type model struct {
 	width int
 	height int
+	cursor int
+	fileCursor int
+	mode Mode
+	filteredFiles []os.DirEntry
+	files []os.DirEntry
+	currentPath string
+	currentFileContent string
+	dirErr error
+	fileContentErr error
+}
+
+type dirReadMessage struct {
+	filteredFiles []os.DirEntry
+	files []os.DirEntry
+	err error
+}
+
+type fileReadMessage struct {
+	content string
+	err error
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		if msg.String() == "ctrl+c" || msg.String() == "q"{
-			return m, tea.Quit
+	return func() tea.Msg {
+		if m.mode == NormalMode {
+			content, err := ReadFile(m.currentPath)
+			return fileReadMessage{content: content, err: err}
 		}
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		return m, nil
+		return ReadCurrentDir(m.currentPath)
 	}
-
-	return m, nil
-}
-
-func (m model) View() string {
-	if m.width == 0 {
-		return "Loading..."
-	}
-
-	sidebarTotal := sidebarStyle.GetWidth() + sidebarStyle.GetHorizontalFrameSize()
-	mainWidth := m.width - sidebarTotal - mainStyle.GetHorizontalFrameSize()
-	contentHeight := m.height - sidebarStyle.GetVerticalFrameSize()
-
-	sidebar := sidebarStyle.Height(contentHeight).Render("Sidebar")
-	main := mainStyle.Width(mainWidth).Height(contentHeight).Render("Main")
-
-	output := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, main)
-	return output
 }
 
 func main() {
-	program := tea.NewProgram(model{}, tea.WithAltScreen())
-	program.Run()
+	ClearTerminal()
+
+	path, startingMode, err := InitModelMode()
+
+	if err != nil {
+		fmt.Printf("Invalid Filepath:\n%s", err)
+		os.Exit(1)
+	}
+
+	program := tea.NewProgram(model{mode: startingMode, currentPath: path}, tea.WithAltScreen())
+	finalModel, err := program.Run()
+
+	if err != nil {
+		fmt.Printf("Error running program:\n%s", err)
+		os.Exit(1)
+	}
+
+	if m, ok := finalModel.(model); ok && m.dirErr != nil{
+		fmt.Println("Error:", m.dirErr)
+		os.Exit(1)
+	}
+
 }
