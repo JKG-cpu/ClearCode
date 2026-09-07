@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -17,7 +18,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Cursor Movement
 			if msg.String() == "j" || msg.String() == "down" {
-				if m.cursor >= len(m.filteredFiles) - 1 {
+				if m.cursor >= len(m.filteredFiles)-1 {
 					m.cursor = 0
 				} else {
 					m.cursor++
@@ -41,7 +42,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.mode = InsertMode
 			}
 		}
-		
+
 		// Insert Mode
 		if m.mode == InsertMode {
 			if msg.String() == "esc" {
@@ -57,18 +58,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Cursor Movement
 			if msg.String() == "j" || msg.String() == "down" {
-				if m.fileCursor >= len(m.filteredFiles) - 1 {
+				if m.fileCursor >= len(m.filteredFiles)-1 {
 					m.fileCursor = 0
+					m.fileScrollOffset = 0
 				} else {
 					m.fileCursor++
+					contentHeight := GetContentHeight(m)
+					if m.fileCursor >= m.fileScrollOffset+contentHeight {
+						m.fileScrollOffset++
+					}
 				}
 			}
 
 			if msg.String() == "k" || msg.String() == "up" {
 				if m.fileCursor <= 0 {
 					m.fileCursor = len(m.filteredFiles) - 1
+					contentHeight := GetContentHeight(m)
+					m.fileScrollOffset = len(m.filteredFiles) - contentHeight
+					if m.fileScrollOffset < 0 {
+						m.fileScrollOffset = 0
+					}
 				} else {
 					m.fileCursor--
+					if m.fileCursor < m.fileScrollOffset {
+						m.fileScrollOffset--
+					}
 				}
 			}
 
@@ -81,6 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				file := m.filteredFiles[m.fileCursor]
 				if file.IsDir() {
 					m.fileCursor = 0
+					m.fileScrollOffset = 0
 					m.currentPath = filepath.Join(m.currentPath, file.Name())
 					return m, func() tea.Msg {
 						return ReadCurrentDir(m.currentPath)
@@ -97,13 +112,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if msg.String() == "backspace" || msg.String() == "h" || msg.String() == "left" {
 				m.fileCursor = 0
+				m.fileScrollOffset = 0
 				m.currentPath = filepath.Join(m.currentPath, "..")
 				return m, func() tea.Msg {
 					return ReadCurrentDir(m.currentPath)
 				}
 			}
 		}
-		
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -115,7 +131,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.filteredFiles = msg.filteredFiles
 		m.files = msg.files
-		
+
 	case fileReadMessage:
 		m.currentFileContent = msg.content
 		m.fileContentErr = msg.err

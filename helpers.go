@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 func ClearTerminal() {
@@ -64,4 +66,14 @@ func ShortenVerticalLines(content string, maxLines int) string {
 		return content
 	}
 	return strings.Join(lines[:maxLines], "\n")
+}
+
+func GetContentHeight(m model) int {
+	sidebarWidth := sidebarStyle.GetWidth() + sidebarStyle.GetHorizontalFrameSize()
+	mainWidth := m.width - sidebarWidth - mainStyle.GetHorizontalFrameSize()
+	
+	status := statusBarStyle.Width(sidebarWidth + mainWidth).Render(GetModeString(m))
+	statusHeight := lipgloss.Height(status)
+
+	return m.height - sidebarStyle.GetVerticalFrameSize() - statusHeight
 }

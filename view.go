@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -13,13 +14,16 @@ func (m model) View() string {
 
 	sidebarWidth := sidebarStyle.GetWidth() + sidebarStyle.GetHorizontalFrameSize()
 	mainWidth := m.width - sidebarWidth - mainStyle.GetHorizontalFrameSize()
-	
+
 	status := statusBarStyle.Width(sidebarWidth + mainWidth).Render(GetModeString(m))
-	statusHeight := lipgloss.Height(status)
 
-	contentHeight := m.height - sidebarStyle.GetVerticalFrameSize() - statusHeight
+	contentHeight := GetContentHeight(m)
 
-	fileNames := RenderSidebar(m, m.filteredFiles)
+	start := m.fileScrollOffset
+	end := min(start+contentHeight, len(m.filteredFiles))
+	visibleFiles := m.filteredFiles[start:end]
+
+	fileNames := RenderSidebar(m, visibleFiles)
 	formattedFileNameString := strings.Join(fileNames, "\n")
 
 	sidebar := sidebarStyle.Height(contentHeight).Render(formattedFileNameString)
@@ -28,7 +32,7 @@ func (m model) View() string {
 	if m.fileContentErr != nil {
 		mainContent = fmt.Sprintf("Error opening file:\n%s", m.fileContentErr)
 	}
-	
+
 	mainContent = ShortenVerticalLines(mainContent, contentHeight)
 	main := mainStyle.Width(mainWidth).Height(contentHeight).Render(mainContent)
 

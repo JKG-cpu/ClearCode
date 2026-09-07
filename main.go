@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -19,7 +20,9 @@ type model struct {
 	width int
 	height int
 	cursor int
+	cursorScrollOffset int
 	fileCursor int
+	fileScrollOffset int
 	mode Mode
 	filteredFiles []os.DirEntry
 	files []os.DirEntry
