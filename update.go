@@ -19,30 +19,72 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Cursor Movement
 			if msg.String() == "j" || msg.String() == "down" {
-				if m.cursor[0] >= len(m.filteredFiles)-1 {
-					m.cursor[0] = 0
+				lines := strings.Split(m.currentFileContent, "\n")
+				contentHeight := GetContentHeight(m)
+				maxOffset := max(len(lines)-contentHeight, 0)
+
+				if m.cursor[0] >= len(lines)-1 {
+					m.cursor[0] = len(lines) - 1
 				} else {
 					m.cursor[0]++
 				}
 
-				lines := strings.Split(m.currentFileContent, "\n")
-				contentHeight := GetContentHeight(m)
-				maxOffset := max(len(lines) - contentHeight, 0)
-
-				if m.cursorScrollOffset < maxOffset { 
+				if m.cursorScrollOffset < maxOffset && m.cursor[0] >= m.cursorScrollOffset+contentHeight-ScrollMargin {
 					m.cursorScrollOffset++
 				}
+
+				newLineLength := len([]rune(lines[m.cursor[0]]))
+				m.cursor[1] = min(m.desiredCol, newLineLength)
 			}
 
 			if msg.String() == "k" || msg.String() == "up" {
 				if m.cursor[0] <= 0 {
-					m.cursor[0] = len(m.filteredFiles) - 1
+					m.cursor[0] = 0
 				} else {
 					m.cursor[0]--
 				}
 
-				if m.cursorScrollOffset > 0 {
+				if m.cursorScrollOffset > 0 && m.cursor[0] <= m.cursorScrollOffset+ScrollMargin {
 					m.cursorScrollOffset--
+				}
+
+				lines := strings.Split(m.currentFileContent, "\n")
+				newLineLength := len([]rune(lines[m.cursor[0]]))
+				m.cursor[1] = min(m.desiredCol, newLineLength)
+			}
+
+			if msg.String() == "l" || msg.String() == "right" {
+				m.cursor[1]++
+				m.cursor[1] = clampCursorCol(m)
+				m.desiredCol = m.cursor[1]
+
+				lines := strings.Split(m.currentFileContent, "\n")
+				expandedLine, runeToVisual := expandTabsWithMap(lines[m.cursor[0]], 4)
+				_ = expandedLine
+				visualCol := runeToVisual[m.cursor[1]]
+
+				if visualCol > m.horizontalScrollOffset + GetMainPanelWidth(m) - ScrollMargin {
+					m.horizontalScrollOffset = visualCol - GetMainPanelWidth(m) + ScrollMargin
+				}
+			}
+
+			if msg.String() == "h" || msg.String() == "left" {
+				m.cursor[1] = clampCursorCol(m)
+
+				m.cursor[1]--
+
+				if m.cursor[1] < 0 {
+					m.cursor[1] = 0
+				}
+				m.desiredCol = m.cursor[1]
+
+				lines := strings.Split(m.currentFileContent, "\n")
+				expandedLine, runeToVisual := expandTabsWithMap(lines[m.cursor[0]], 4)
+				_ = expandedLine
+				visualCol := runeToVisual[m.cursor[1]]
+
+				if visualCol < m.horizontalScrollOffset + ScrollMargin {
+					m.horizontalScrollOffset = max(visualCol - ScrollMargin, 0)
 				}
 			}
 
@@ -107,15 +149,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				file := m.filteredFiles[m.fileCursor]
 				if file.IsDir() {
-					m.fileCursor = 0
-					m.fileScrollOffset = 0
+					m = ResetCursors(m)
 					m.currentPath = filepath.Join(m.currentPath, file.Name())
 					return m, func() tea.Msg {
 						return ReadCurrentDir(m.currentPath)
 					}
 				} else {
-					m.cursorScrollOffset = 0
-					m.cursor = [2]int{0, 0}
+					m = ResetCursors(m)
 
 					newPath := filepath.Join(m.currentPath, file.Name())
 					bytes, err := ReadFile(newPath)
@@ -127,8 +167,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.String() == "backspace" || msg.String() == "h" || msg.String() == "left" {
-				m.fileCursor = 0
-				m.fileScrollOffset = 0
+				m = ResetCursors(m)
 				m.currentPath = filepath.Join(m.currentPath, "..")
 				return m, func() tea.Msg {
 					return ReadCurrentDir(m.currentPath)

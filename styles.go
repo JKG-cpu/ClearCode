@@ -17,5 +17,4 @@ var selectedTextStyle = lipgloss.NewStyle().
 	Italic(true)
 
 var cursorStyle = lipgloss.NewStyle().
-    Underline(true).
-    Foreground(lipgloss.Color("205"))
+    Background(lipgloss.Color("205"))

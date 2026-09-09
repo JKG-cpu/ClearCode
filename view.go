@@ -38,14 +38,28 @@ func (m model) View() string {
 	lines := strings.Split(mainContent, "\n")
 	start = m.cursorScrollOffset
 	end = min(start + contentHeight, len(lines))
-	
 	if start > end {
 		start = end
 	}
 
-	mainContent = strings.Join(lines[start:end], "\n")
-	displayContent := RenderWithCursor(mainContent, m.cursor)
-	main := mainStyle.Width(mainWidth).Height(contentHeight).Render(displayContent)
+	visibleLines := lines[start:end]
+	cursorLineIndex := m.cursor[0] - start
+
+	for i, line := range visibleLines {
+		expanded, runeToVisual := expandTabsWithMap(line, 4)
+		windowed := WindowLine(expanded, m.horizontalScrollOffset, mainWidth)
+
+		if i == cursorLineIndex {
+			visualCol := runeToVisual[m.cursor[1]]
+			windowRelativeCol := visualCol - m.horizontalScrollOffset
+			windowed = RenderCursorAtCol(windowed, windowRelativeCol)
+		}
+
+		visibleLines[i] = windowed
+	}
+
+	mainContent = strings.Join(visibleLines, "\n")
+	main := mainStyle.Width(mainWidth).Height(contentHeight).Render(mainContent)
 
 	top_panels := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, main)
 	full_panel := lipgloss.JoinVertical(lipgloss.Left, top_panels, status)

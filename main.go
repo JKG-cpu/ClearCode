@@ -16,31 +16,35 @@ const (
 	FileMode
 )
 
+const ScrollMargin = 3
+
 type model struct {
-	width int
-	height int
-	cursor [2]int
-	cursorScrollOffset int
-	fileCursor int
-	fileScrollOffset int
-	mode Mode
-	filteredFiles []os.DirEntry
-	files []os.DirEntry
-	currentPath string
-	currentFileContent string
-	dirErr error
-	fileContentErr error
+	width                  int
+	height                 int
+	cursor                 [2]int
+	cursorScrollOffset     int
+	horizontalScrollOffset int
+	desiredCol             int
+	fileCursor             int
+	fileScrollOffset       int
+	mode                   Mode
+	filteredFiles          []os.DirEntry
+	files                  []os.DirEntry
+	currentPath            string
+	currentFileContent     string
+	dirErr                 error
+	fileContentErr         error
 }
 
 type dirReadMessage struct {
 	filteredFiles []os.DirEntry
-	files []os.DirEntry
-	err error
+	files         []os.DirEntry
+	err           error
 }
 
 type fileReadMessage struct {
 	content string
-	err error
+	err     error
 }
 
 func (m model) Init() tea.Cmd {
@@ -71,7 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if m, ok := finalModel.(model); ok && m.dirErr != nil{
+	if m, ok := finalModel.(model); ok && m.dirErr != nil {
 		fmt.Println("Error:", m.dirErr)
 		os.Exit(1)
 	}
