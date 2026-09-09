@@ -23,24 +23,23 @@ func ClearTerminal() {
 	cmd.Run()
 }
 
-func InitModelMode() (string, Mode, error) {
-	if len(os.Args) == 1 {
-		return ".", FileMode, nil
-	}
+func InitModelMode() (string, string, Mode, error) {
+    if len(os.Args) == 1 {
+        return ".", "", FileMode, nil
+    }
 
-	filepathArg := filepath.Join(".", os.Args[1])
+    filepathArg := filepath.Join(".", os.Args[1])
+    info, err := os.Stat(filepathArg)
 
-	info, err := os.Stat(filepathArg)
+    if err != nil {
+        return ".", "", NormalMode, err
+    }
 
-	if err != nil {
-		return ".", NormalMode, err
-	}
-
-	if info.IsDir() {
-		return filepathArg, FileMode, nil
-	} else {
-		return filepathArg, NormalMode, nil
-	}
+    if info.IsDir() {
+        return filepathArg, "", FileMode, nil
+    } else {
+        return filepath.Dir(filepathArg), filepathArg, NormalMode, nil
+    }
 }
 
 func GetModeString(m model) string {

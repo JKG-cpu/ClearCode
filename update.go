@@ -129,10 +129,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.fileCursor <= 0 {
 					m.fileCursor = len(m.filteredFiles) - 1
 					contentHeight := GetContentHeight(m)
-					m.fileScrollOffset = len(m.filteredFiles) - contentHeight
-					if m.fileScrollOffset < 0 {
-						m.fileScrollOffset = 0
-					}
+					m.fileScrollOffset = max(len(m.filteredFiles) - contentHeight, 0)
 				} else {
 					m.fileCursor--
 					if m.fileCursor < m.fileScrollOffset {
@@ -160,6 +157,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newPath := filepath.Join(m.currentPath, file.Name())
 					bytes, err := ReadFile(newPath)
 
+					m.currentFile = newPath
 					m.currentFileContent = string(bytes)
 					m.fileContentErr = err
 					m.mode = NormalMode
@@ -192,7 +190,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fileContentErr = msg.err
 
 		// Read Parent Folder as well
-		dir := ReadCurrentDir(filepath.Join(m.currentPath, ".."))
+		dir := ReadCurrentDir(filepath.Join(m.currentFile, ".."))
 
 		m.filteredFiles = dir.filteredFiles
 		m.files = dir.files

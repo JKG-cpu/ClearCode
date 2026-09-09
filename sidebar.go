@@ -29,7 +29,7 @@ func RenderSidebar(m model, files []os.DirEntry) []string {
 	fileNames := []string{}
 
 	for index, filename := range files {
-		fileName := filename.Name()
+		fileName := TruncateLine(filename.Name(), sidebarStyle.GetWidth())
 		if index+m.fileScrollOffset == m.fileCursor && m.mode == FileMode {
 			text := selectedTextStyle.Render(fileName)
 			fileNames = append(fileNames, text)

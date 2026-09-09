@@ -31,6 +31,7 @@ type model struct {
 	filteredFiles          []os.DirEntry
 	files                  []os.DirEntry
 	currentPath            string
+	currentFile            string
 	currentFileContent     string
 	dirErr                 error
 	fileContentErr         error
@@ -50,7 +51,7 @@ type fileReadMessage struct {
 func (m model) Init() tea.Cmd {
 	return func() tea.Msg {
 		if m.mode == NormalMode {
-			content, err := ReadFile(m.currentPath)
+			content, err := ReadFile(m.currentFile)
 			return fileReadMessage{content: content, err: err}
 		}
 		return ReadCurrentDir(m.currentPath)
@@ -60,14 +61,14 @@ func (m model) Init() tea.Cmd {
 func main() {
 	ClearTerminal()
 
-	path, startingMode, err := InitModelMode()
+	path, startingFile, startingMode, err := InitModelMode()
 
 	if err != nil {
 		fmt.Printf("Invalid Filepath:\n%s", err)
 		os.Exit(1)
 	}
 
-	program := tea.NewProgram(model{mode: startingMode, currentPath: path}, tea.WithAltScreen())
+	program := tea.NewProgram(model{mode: startingMode, currentPath: path, currentFile: startingFile}, tea.WithAltScreen())
 	finalModel, err := program.Run()
 
 	if err != nil {
