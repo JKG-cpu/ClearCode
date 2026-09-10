@@ -65,6 +65,7 @@ func ResetCursors(m model) model {
 	m.cursorScrollOffset = 0
 	m.horizontalScrollOffset = 0
 	m.desiredCol = 0
+	m.endLine = false
 
 	// File Cursor
 	m.fileCursor = 0
@@ -105,6 +106,12 @@ func GetContentHeight(m model) int {
 func GetMainPanelWidth(m model) int {
 	sidebarWidth := sidebarStyle.GetWidth() + sidebarStyle.GetHorizontalFrameSize()
 	return m.width - sidebarWidth - mainStyle.GetHorizontalFrameSize()
+}
+
+func GetVisualCol(m model) int {
+	lines := strings.Split(m.currentFileContent, "\n")
+	_, runeToVisual := expandTabsWithMap(lines[m.cursor[0]], 4)
+	return runeToVisual[m.cursor[1]]
 }
 
 func WindowLine(expandedLine string, offset int, width int) string {

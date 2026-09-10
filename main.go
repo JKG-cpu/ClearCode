@@ -25,6 +25,7 @@ type model struct {
 	cursorScrollOffset     int
 	horizontalScrollOffset int
 	desiredCol             int
+	endLine                bool
 	fileCursor             int
 	fileScrollOffset       int
 	mode                   Mode

@@ -12,11 +12,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Normal Mode
 		if m.mode == NormalMode {
-			// Quitting
-			if msg.String() == "ctrl+c" || msg.String() == "q" {
-				return m, tea.Quit
-			}
-
 			// Cursor Movement
 			if msg.String() == "j" || msg.String() == "down" {
 				lines := strings.Split(m.currentFileContent, "\n")
@@ -27,6 +22,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor[0] = len(lines) - 1
 				} else {
 					m.cursor[0]++
+				}
+
+				if m.endLine {
+					m = JumpToEndOfLine(m)
 				}
 
 				if m.cursorScrollOffset < maxOffset && m.cursor[0] >= m.cursorScrollOffset+contentHeight-ScrollMargin {
@@ -44,6 +43,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor[0]--
 				}
 
+				if m.endLine {
+					m = JumpToEndOfLine(m)
+				}
+
 				if m.cursorScrollOffset > 0 && m.cursor[0] <= m.cursorScrollOffset+ScrollMargin {
 					m.cursorScrollOffset--
 				}
@@ -54,14 +57,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.String() == "l" || msg.String() == "right" {
+				m.endLine = false
+				
 				m.cursor[1]++
 				m.cursor[1] = clampCursorCol(m)
 				m.desiredCol = m.cursor[1]
 
-				lines := strings.Split(m.currentFileContent, "\n")
-				expandedLine, runeToVisual := expandTabsWithMap(lines[m.cursor[0]], 4)
-				_ = expandedLine
-				visualCol := runeToVisual[m.cursor[1]]
+				visualCol := GetVisualCol(m)
 
 				if visualCol > m.horizontalScrollOffset + GetMainPanelWidth(m) - ScrollMargin {
 					m.horizontalScrollOffset = visualCol - GetMainPanelWidth(m) + ScrollMargin
@@ -69,6 +71,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.String() == "h" || msg.String() == "left" {
+				m.endLine = false
+				
 				m.cursor[1] = clampCursorCol(m)
 
 				m.cursor[1]--
@@ -78,10 +82,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.desiredCol = m.cursor[1]
 
-				lines := strings.Split(m.currentFileContent, "\n")
-				expandedLine, runeToVisual := expandTabsWithMap(lines[m.cursor[0]], 4)
-				_ = expandedLine
-				visualCol := runeToVisual[m.cursor[1]]
+				visualCol := GetVisualCol(m)
 
 				if visualCol < m.horizontalScrollOffset + ScrollMargin {
 					m.horizontalScrollOffset = max(visualCol - ScrollMargin, 0)
@@ -95,6 +96,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if msg.String() == "i" {
 				m.mode = InsertMode
+			}
+
+			// Keybinds
+			if msg.String() == "ctrl+c" || msg.String() == "q" {
+				return m, tea.Quit
+			}
+
+			if msg.String() == "$" {
+				m = JumpToEndOfLine(m)
+			}
+
+			if msg.String() == "A" {
+				m = JumpToEndOfLine(m)
+				m.mode = InsertMode
+			}
+
+			if msg.String() == "0" {
+				m.endLine = false
+				m.cursor[1] = 0
+				
+				m.desiredCol = m.cursor[1]
+
+				visualCol := GetVisualCol(m)
+
+				if visualCol < m.horizontalScrollOffset + ScrollMargin {
+					m.horizontalScrollOffset = max(visualCol - ScrollMargin, 0)
+				}
 			}
 		}
 
