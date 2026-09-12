@@ -42,6 +42,7 @@ type model struct {
 	
 	dirErr                 error
 	fileContentErr         error
+	saveErr                error
 }
 
 type dirReadMessage struct {

@@ -131,6 +131,16 @@ func DeleteCharacter(m model) model {
 	return m
 }
 
+func SaveFile(m model) model {
+	content := strings.Join(m.lines, "\n")
+	err := os.WriteFile(m.currentFile, []byte(content), 0644)
+	if err != nil {
+		m.saveErr = err
+	}
+
+	return m
+}
+
 // Cursors
 func ResetCursors(m model) model {
 	// Text Cursor

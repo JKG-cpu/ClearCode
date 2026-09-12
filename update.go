@@ -123,6 +123,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.horizontalScrollOffset = max(visualCol - ScrollMargin, 0)
 				}
 			}
+
+			if msg.String() == "ctrl+s" {
+				m = SaveFile(m)
+			}
 		
 		// Insert Mode
 		case InsertMode:
@@ -136,6 +140,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if msg.String() == "enter" {
 				m = InsertEmptyLine(m)
+			}
+
+			if msg.Type == tea.KeySpace {
+				m = InsertRune(m, ' ')
 			}
 
 			if msg.Type == tea.KeyRunes {
