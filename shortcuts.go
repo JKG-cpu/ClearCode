@@ -1,10 +1,7 @@
 package main
 
-import "strings"
-
 func JumpToEndOfLine(m model) model {
-    lines := strings.Split(m.currentFileContent, "\n")
-    lineLength := len([]rune(lines[m.cursor[0]]))
+    lineLength := len([]rune(m.lines[m.cursor[0]]))
 
     m.cursor[1] = lineLength
     m.desiredCol = m.cursor[1]

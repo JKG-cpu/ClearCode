@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -35,7 +36,7 @@ func (m model) View() string {
 		mainContent = fmt.Sprintf("Error opening file:\n%s", m.fileContentErr)
 	}
 
-	lines := strings.Split(mainContent, "\n")
+	lines := slices.Clone(m.lines)
 	start = m.cursorScrollOffset
 	end = min(start + contentHeight, len(lines))
 	if start > end {

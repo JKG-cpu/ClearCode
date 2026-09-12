@@ -21,19 +21,25 @@ const ScrollMargin = 3
 type model struct {
 	width                  int
 	height                 int
+
 	cursor                 [2]int
 	cursorScrollOffset     int
 	horizontalScrollOffset int
 	desiredCol             int
 	endLine                bool
+	
 	fileCursor             int
 	fileScrollOffset       int
-	mode                   Mode
 	filteredFiles          []os.DirEntry
 	files                  []os.DirEntry
 	currentPath            string
 	currentFile            string
+
 	currentFileContent     string
+	lines 				   []string
+
+	mode                   Mode
+	
 	dirErr                 error
 	fileContentErr         error
 }

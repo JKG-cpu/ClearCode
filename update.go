@@ -10,16 +10,16 @@ import (
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		switch m.mode {
 		// Normal Mode
-		if m.mode == NormalMode {
+		case NormalMode:
 			// Cursor Movement
 			if msg.String() == "j" || msg.String() == "down" {
-				lines := strings.Split(m.currentFileContent, "\n")
 				contentHeight := GetContentHeight(m)
-				maxOffset := max(len(lines)-contentHeight, 0)
+				maxOffset := max(len(m.lines)-contentHeight, 0)
 
-				if m.cursor[0] >= len(lines)-1 {
-					m.cursor[0] = len(lines) - 1
+				if m.cursor[0] >= len(m.lines)-1 {
+					m.cursor[0] = len(m.lines) - 1
 				} else {
 					m.cursor[0]++
 				}
@@ -32,7 +32,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursorScrollOffset++
 				}
 
-				newLineLength := len([]rune(lines[m.cursor[0]]))
+				newLineLength := len([]rune(m.lines[m.cursor[0]]))
 				m.cursor[1] = min(m.desiredCol, newLineLength)
 			}
 
@@ -51,8 +51,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursorScrollOffset--
 				}
 
-				lines := strings.Split(m.currentFileContent, "\n")
-				newLineLength := len([]rune(lines[m.cursor[0]]))
+				newLineLength := len([]rune(m.lines[m.cursor[0]]))
 				m.cursor[1] = min(m.desiredCol, newLineLength)
 			}
 
@@ -124,17 +123,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.horizontalScrollOffset = max(visualCol - ScrollMargin, 0)
 				}
 			}
-		}
-
+		
 		// Insert Mode
-		if m.mode == InsertMode {
+		case InsertMode:
 			if msg.String() == "esc" {
 				m.mode = NormalMode
 			}
-		}
 
+			if msg.String() == "backspace" {
+				m = DeleteCharacter(m)
+			}
+
+			if msg.String() == "enter" {
+				m = InsertEmptyLine(m)
+			}
+
+			if msg.Type == tea.KeyRunes {
+				for _, r := range msg.Runes {
+					m = InsertRune(m, r)
+				}
+			}
+		
 		// File Mode
-		if m.mode == FileMode {
+		case FileMode:
 			if msg.String() == "esc" {
 				m.mode = NormalMode
 			}
@@ -187,6 +198,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					m.currentFile = newPath
 					m.currentFileContent = string(bytes)
+					m.lines = strings.Split(string(bytes), "\n")
 					m.fileContentErr = err
 					m.mode = NormalMode
 				}
@@ -215,6 +227,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case fileReadMessage:
 		m.currentFileContent = msg.content
+		m.lines = strings.Split(msg.content, "\n")
 		m.fileContentErr = msg.err
 
 		// Read Parent Folder as well

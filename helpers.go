@@ -5,11 +5,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Terminal
 func ClearTerminal() {
 	var cmd *exec.Cmd
 
@@ -23,25 +25,27 @@ func ClearTerminal() {
 	cmd.Run()
 }
 
+// Init
 func InitModelMode() (string, string, Mode, error) {
-    if len(os.Args) == 1 {
-        return ".", "", FileMode, nil
-    }
+	if len(os.Args) == 1 {
+		return ".", "", FileMode, nil
+	}
 
-    filepathArg := filepath.Join(".", os.Args[1])
-    info, err := os.Stat(filepathArg)
+	filepathArg := filepath.Join(".", os.Args[1])
+	info, err := os.Stat(filepathArg)
 
-    if err != nil {
-        return ".", "", NormalMode, err
-    }
+	if err != nil {
+		return ".", "", NormalMode, err
+	}
 
-    if info.IsDir() {
-        return filepathArg, "", FileMode, nil
-    } else {
-        return filepath.Dir(filepathArg), filepathArg, NormalMode, nil
-    }
+	if info.IsDir() {
+		return filepathArg, "", FileMode, nil
+	} else {
+		return filepath.Dir(filepathArg), filepathArg, NormalMode, nil
+	}
 }
 
+// Modes
 func GetModeString(m model) string {
 	if m.mode == 1 {
 		return "INSERT"
@@ -54,11 +58,80 @@ func GetModeString(m model) string {
 	return "NORMAL"
 }
 
+// Files
 func ReadFile(path string) (string, error) {
 	bytes, err := os.ReadFile(path)
 	return string(bytes), err
 }
 
+func InsertRune(m model, r rune) model {
+	cursorRow := m.cursor[0]
+	cursorCol := m.cursor[1]
+
+	runes := []rune(m.lines[cursorRow])
+
+	var builder strings.Builder
+	builder.WriteString(string(runes[:cursorCol]))
+	builder.WriteRune(r)
+	builder.WriteString(string(runes[cursorCol:]))
+
+	m.lines[cursorRow] = builder.String()
+
+	m.cursor[1]++
+	m.desiredCol = m.cursor[1]
+	
+	return m
+}
+
+func InsertEmptyLine(m model) model {
+    currentLine := []rune(m.lines[m.cursor[0]])
+
+    before := string(currentLine[:m.cursor[1]])
+    after := string(currentLine[m.cursor[1]:])
+
+    m.lines[m.cursor[0]] = before
+    m.lines = slices.Insert(m.lines, m.cursor[0]+1, after)
+
+    m.cursor[0]++
+    m.cursor[1] = 0
+    m.desiredCol = 0
+
+    return m
+}
+
+func DeleteCharacter(m model) model {
+	if m.cursor == [2]int{0, 0} {
+		return m
+	}
+
+	// Cursor at start of line
+	if m.cursor[1] == 0 {
+		prevLine := m.lines[m.cursor[0] - 1]
+		currentLine := m.lines[m.cursor[0]][m.cursor[1]:]
+
+		var builder strings.Builder
+		builder.WriteString(prevLine)
+		builder.WriteString(currentLine)
+
+		m.lines[m.cursor[0] - 1] = builder.String()
+		m.lines = slices.Delete(m.lines, m.cursor[0], m.cursor[0] + 1)
+		m.cursor[0]--
+		m.cursor[1] = len([]rune(prevLine))
+	} else {
+		cursorRow := m.cursor[0]
+		cursorCol := m.cursor[1]
+
+		runes := []rune(m.lines[cursorRow])
+		m.lines[cursorRow] = string(runes[:cursorCol-1]) + string(runes[cursorCol:])	
+		m.cursor[1] = max(0, m.cursor[1] - 1)
+	}
+
+	m.desiredCol = m.cursor[1]
+	
+	return m
+}
+
+// Cursors
 func ResetCursors(m model) model {
 	// Text Cursor
 	m.cursor = [2]int{0, 0}
@@ -74,12 +147,12 @@ func ResetCursors(m model) model {
 	return m
 }
 
-func ShortenVerticalLines(content string, maxLines int) string {
-	lines := strings.Split(content, "\n")
-	if len(lines) <= maxLines || maxLines <= 0 {
-		return content
+// Lines
+func ShortenVerticalLines(content []string, maxLines int) string {
+	if len(content) <= maxLines || maxLines <= 0 {
+		return strings.Join(content, "\n")
 	}
-	return strings.Join(lines[:maxLines], "\n")
+	return strings.Join(content[:maxLines], "\n")
 }
 
 func TruncateLine(s string, width int) string {
@@ -93,6 +166,7 @@ func TruncateLine(s string, width int) string {
 	return string(runes[:width-3]) + "..."
 }
 
+// Get
 func GetContentHeight(m model) int {
 	sidebarWidth := sidebarStyle.GetWidth() + sidebarStyle.GetHorizontalFrameSize()
 	mainWidth := m.width - sidebarWidth - mainStyle.GetHorizontalFrameSize()
@@ -109,23 +183,23 @@ func GetMainPanelWidth(m model) int {
 }
 
 func GetVisualCol(m model) int {
-	lines := strings.Split(m.currentFileContent, "\n")
-	_, runeToVisual := expandTabsWithMap(lines[m.cursor[0]], 4)
+	_, runeToVisual := expandTabsWithMap(m.lines[m.cursor[0]], 4)
 	return runeToVisual[m.cursor[1]]
 }
 
 func WindowLine(expandedLine string, offset int, width int) string {
-    runes := []rune(expandedLine)
+	runes := []rune(expandedLine)
 
-    if offset >= len(runes) {
-        return ""
-    }
+	if offset >= len(runes) {
+		return ""
+	}
 
-    end := min(offset + width, len(runes))
+	end := min(offset+width, len(runes))
 
-    return string(runes[offset:end])
+	return string(runes[offset:end])
 }
 
+// Rendering
 func expandTabsWithMap(line string, tabWidth int) (string, []int) {
 	var expanded strings.Builder
 	visualCol := 0
@@ -148,8 +222,7 @@ func expandTabsWithMap(line string, tabWidth int) (string, []int) {
 }
 
 func clampCursorCol(m model) int {
-	lines := strings.Split(m.currentFileContent, "\n")
-	lineLength := len([]rune(lines[m.cursor[0]]))
+	lineLength := len([]rune(m.lines[m.cursor[0]]))
 	if m.cursor[1] > lineLength {
 		return lineLength
 	}
@@ -157,52 +230,50 @@ func clampCursorCol(m model) int {
 }
 
 func RenderCursorAtCol(line string, col int) string {
-    runes := []rune(line)
+	runes := []rune(line)
 
-    if col < 0 {
-        return line
-    }
-    if col >= len(runes) {
-        return line + cursorStyle.Render(" ")
-    }
+	if col < 0 {
+		return line
+	}
+	if col >= len(runes) {
+		return line + cursorStyle.Render(" ")
+	}
 
-    before := string(runes[:col])
-    char := string(runes[col])
-    after := string(runes[col+1:])
+	before := string(runes[:col])
+	char := string(runes[col])
+	after := string(runes[col+1:])
 
-    return before + cursorStyle.Render(char) + after
+	return before + cursorStyle.Render(char) + after
 }
 
-func RenderWithCursor(content string, cursor [2]int) string {
-	lines := strings.Split(content, "\n")
-
+func RenderWithCursor(content []string, cursor [2]int) string {
 	cursorRow := cursor[0]
 	cursorCol := cursor[1]
 
-	if cursorRow < 0 || cursorRow >= len(lines) {
-		return content
+	if cursorRow < 0 || cursorRow >= len(content) {
+		return strings.Join(content, "\n")
 	}
 
-	line := lines[cursorRow]
+	line := content[cursorRow]
 	expandedLine, runeToVisual := expandTabsWithMap(line, 4)
 
 	if cursorCol < 0 || cursorCol >= len(runeToVisual) {
-		return content
+		return strings.Join(content, "\n")
 	}
 
 	visualCol := runeToVisual[cursorCol]
 	runes := []rune(expandedLine)
 
 	if visualCol >= len(runes) {
-		lines[cursorRow] = expandedLine + cursorStyle.Render(" ")
-		return strings.Join(lines, "\n")
+		content[cursorRow] = expandedLine + cursorStyle.Render(" ")
+		return strings.Join(content, "\n")
 	}
 
 	before := string(runes[:visualCol])
 	char := string(runes[visualCol])
 	after := string(runes[visualCol+1:])
 
-	lines[cursorRow] = before + cursorStyle.Render(char) + after
+	content[cursorRow] = before + cursorStyle.Render(char) + after
 
-	return strings.Join(lines, "\n")
+	return strings.Join(content, "\n")
 }
